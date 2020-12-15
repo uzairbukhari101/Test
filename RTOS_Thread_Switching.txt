@@ -1,0 +1,47 @@
+To switch between the threads, add a break point in systick while executing blinky1 thread. Copy the stack address from CPU to update the blinky1 stack pointer.
+This is because the new address on CPU stack is the top of the stack for blinky1 thread. Then overwrite the stack with blinky2 thread. Update the stack pointer for blinky2 before switching to blinky1 thread again.
+
+The Cortex-M exception stack frame corresponds to Arm Application Procedure Call Standard (AAPCS), in that it only stores registers that are allowed to be clobbered by function call but doesn't store R4 through R11 which must be preserve by function call.
+
+This works for ISRs because an ISR must run to completion before returning to preemted code. But if thread2 is called and not the preempted thread1 and if thread2 also uses say R7 register.
+
+The solution is to save remaining 8 registers, R4 through R11, on the threads stack at the end of ISR, right before switching the context away from the thread. These registers must be restored before returning from ISR.
+
+This changes between threads but doesn't quite perserve the registers R4 through R11.
+**********************************
+To automate the proecss, create a folder in the project, MiROS.
+Create 2 files, miros.h and miros.c
+In micros.h, use the inclusion guards
+
+#ifndef MIROS_H
+#define MIROS_H
+
+#endif /*MIROS_H*/
+
+The first thing is how to represent your threads in header file.
+Each thread requires prive stack pointer. To capture this, provide a struct OSThread that contains the stack pointer and can be extended as RTOS grows.
+
+In standard RTOS implementations, the data structure associated with thread is called Thread Control Block (TCB).
+
+
+typedef struct{
+void *sp;
+} OSThread;
+
+In main.c, add #include"miros.h" and replace the type of stack pointers by OSThread type.
+
+Next RTOS API required is a function to fabricate the register context on each thread's stack, usually called Thread_create or Thread_start.
+
+
+The function takes following parameters:
+1. A pointer to TCB.
+2. Pointer-to-function to thread handler. The typedef is OSThreadHandler.
+3. Requires memory for the private stack and size of that stack.
+
+//A function pointer taking no arguments with return type void.
+typedef void (*OSThreadHandler)();
+
+void OSThread_start(
+	OSThread *me,
+	OSThreadHandler threadHandler,
+	void *stkSto, uint32_t stkSize);
