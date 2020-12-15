@@ -46,5 +46,8 @@ void OSThread_start(
 	OSThreadHandler threadHandler,
 	void *stkSto, uint32_t stkSize);
 
+FreeRTOS
 
-Adding this line to commit further changes
+Git repository branch view update
+
+Removing branch
